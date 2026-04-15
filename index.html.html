@@ -1,0 +1,1490 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>13K 骨髓穿刺 (BMA) 臨床流程模擬器</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --navy:#0a1628;--navy2:#0f2044;--blue:#1a56db;--blue-lt:#3b82f6;
+  --teal:#0d9488;--teal-lt:#14b8a6;--sky:#e0f2fe;--white:#f8fafc;
+  --gray100:#f1f5f9;--gray200:#e2e8f0;--gray400:#94a3b8;--gray600:#475569;--gray800:#1e293b;
+  --red:#dc2626;--red-lt:#fef2f2;--orange:#ea580c;--green:#16a34a;--green-lt:#f0fdf4;
+  --yellow:#ca8a04;--yellow-lt:#fefce8;
+  --shadow:0 4px 24px rgba(10,22,40,.13);--shadow-lg:0 8px 40px rgba(10,22,40,.18);
+  --radius:12px;--radius-sm:8px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans TC',sans-serif;background:var(--navy);color:var(--gray800);min-height:100vh;display:flex;flex-direction:column}
+
+/* HEADER */
+.app-header{background:linear-gradient(135deg,var(--navy2) 0%,#0c1f3a 100%);border-bottom:1px solid rgba(59,130,246,.2);padding:0 2rem;height:64px;display:flex;align-items:center;gap:1rem;position:sticky;top:0;z-index:100}
+.logo-badge{background:var(--blue);color:#fff;font-family:'JetBrains Mono',monospace;font-size:.7rem;font-weight:600;letter-spacing:.08em;padding:.25rem .6rem;border-radius:6px}
+.logo-title{color:var(--white);font-size:1rem;font-weight:700;letter-spacing:.02em}
+.logo-subtitle{color:var(--gray400);font-size:.75rem;margin-top:.05rem}
+.header-spacer{flex:1}
+.progress-chip{background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.3);color:var(--blue-lt);font-size:.8rem;font-family:'JetBrains Mono',monospace;padding:.3rem .8rem;border-radius:20px}
+
+/* LAYOUT */
+.app-body{display:flex;flex:1;min-height:0;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{width:240px;flex-shrink:0;background:var(--navy2);border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;padding:1.5rem 1rem;gap:.5rem;overflow-y:auto}
+.sidebar-label{color:var(--gray400);font-size:.7rem;letter-spacing:.12em;font-weight:600;text-transform:uppercase;padding:0 .5rem;margin-bottom:.25rem}
+.step-item{display:flex;align-items:flex-start;gap:.75rem;padding:.7rem .75rem;border-radius:var(--radius-sm);cursor:pointer;transition:background .2s;position:relative}
+.step-item:not(:last-child)::after{content:'';position:absolute;left:1.28rem;top:calc(100% - 2px);width:2px;height:.9rem;background:rgba(255,255,255,.08)}
+.step-item.active{background:rgba(26,86,219,.18)}
+.step-dot{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;flex-shrink:0;font-family:'JetBrains Mono',monospace;border:2px solid rgba(255,255,255,.12);background:var(--navy);color:var(--gray400);transition:all .25s;position:relative;z-index:1}
+.step-item.active .step-dot{background:var(--blue);border-color:var(--blue-lt);color:#fff;box-shadow:0 0 14px rgba(59,130,246,.5)}
+.step-item.done .step-dot{background:var(--teal);border-color:var(--teal-lt);color:#fff}
+.step-text{display:flex;flex-direction:column;gap:.15rem}
+.step-name{color:var(--white);font-size:.82rem;font-weight:500;line-height:1.3}
+.step-item:not(.active) .step-name{color:var(--gray400)}
+.step-item.active .step-name{color:#fff}
+.step-sub{color:var(--gray400);font-size:.7rem;line-height:1.3}
+
+/* CONTENT */
+.content-area{flex:1;overflow-y:auto;background:var(--gray100);padding:2rem;display:flex;flex-direction:column;gap:1.5rem}
+.stage{display:none;flex-direction:column;gap:1.5rem;animation:fadeIn .35s ease}
+.stage.active{display:flex}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* CARDS */
+.card{background:#fff;border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden}
+.card-header{background:linear-gradient(135deg,var(--navy2) 0%,#122444 100%);padding:1rem 1.5rem;display:flex;align-items:center;gap:.75rem}
+.card-icon{width:36px;height:36px;border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+.card-title{color:#fff;font-size:.95rem;font-weight:700}
+.card-desc{color:var(--gray400);font-size:.78rem;margin-top:.15rem}
+.card-body{padding:1.5rem}
+
+/* STAGE HERO */
+.stage-hero{background:linear-gradient(135deg,var(--blue) 0%,#0f3fa6 100%);border-radius:var(--radius);padding:1.25rem 1.75rem;display:flex;align-items:center;gap:1rem;box-shadow:var(--shadow)}
+.stage-num{width:48px;height:48px;border-radius:12px;background:rgba(255,255,255,.15);color:#fff;font-size:1.4rem;font-weight:800;display:flex;align-items:center;justify-content:center;font-family:'JetBrains Mono',monospace;flex-shrink:0}
+.stage-info .stage-title{color:#fff;font-size:1.15rem;font-weight:700}
+.stage-info .stage-desc{color:rgba(255,255,255,.7);font-size:.82rem;margin-top:.2rem}
+
+/* CHECKLIST */
+.checklist{display:flex;flex-direction:column;gap:.5rem}
+.check-item{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;border-radius:var(--radius-sm);border:1.5px solid var(--gray200);background:var(--white);cursor:pointer;transition:all .2s;user-select:none}
+.check-item:hover{border-color:var(--blue-lt);background:var(--sky)}
+.check-item.checked{border-color:var(--teal);background:var(--green-lt)}
+.check-box{width:22px;height:22px;border-radius:6px;border:2px solid var(--gray400);display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.check-item.checked .check-box{background:var(--teal);border-color:var(--teal);color:#fff}
+.check-box svg{display:none}
+.check-item.checked .check-box svg{display:block}
+.check-content{flex:1}
+.check-name{font-size:.88rem;font-weight:600;color:var(--gray800)}
+.check-code{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--gray400);margin-top:.1rem}
+.check-item.order{border-left:3px solid var(--orange)}
+
+/* IMG PLACEHOLDER */
+.img-placeholder{width:100%;min-height:80px;background:var(--gray200);border:2px dashed var(--gray400);border-radius:var(--radius-sm);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.35rem;color:var(--gray400);font-size:.72rem;text-align:center;padding:.75rem}
+.img-placeholder-icon{font-size:1.5rem}
+img{display:block;width:100%;min-height:80px;border-radius:var(--radius-sm);object-fit:cover;border:2px dashed var(--gray400);background:var(--gray200)}
+
+/* GRID */
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:1rem}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:.5rem;padding:.7rem 1.4rem;border-radius:var(--radius-sm);font-size:.88rem;font-weight:600;font-family:'Noto Sans TC',sans-serif;cursor:pointer;border:none;transition:all .18s;white-space:nowrap}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--blue);color:#fff;box-shadow:0 3px 10px rgba(26,86,219,.35)}
+.btn-primary:hover{background:#1d4ed8;box-shadow:0 4px 14px rgba(26,86,219,.5)}
+.btn-primary:disabled{background:var(--gray400);box-shadow:none;cursor:not-allowed;opacity:.6}
+.btn-teal{background:var(--teal);color:#fff;box-shadow:0 3px 10px rgba(13,148,136,.35)}
+.btn-teal:hover:not(:disabled){background:#0f766e}
+.btn-teal:disabled{background:var(--gray400);box-shadow:none;cursor:not-allowed;opacity:.6}
+.btn-outline{background:transparent;color:var(--blue);border:1.5px solid var(--blue)}
+.btn-outline:hover{background:var(--sky)}
+.btn-danger{background:var(--red);color:#fff;box-shadow:0 3px 10px rgba(220,38,38,.35)}
+.btn-danger:disabled{background:var(--gray400);box-shadow:none;cursor:not-allowed;opacity:.6}
+.btn-orange{background:var(--orange);color:#fff;box-shadow:0 3px 10px rgba(234,88,12,.3)}
+.btn-orange:hover:not(:disabled){background:#c2410c}
+.btn-orange:disabled{background:var(--gray400);box-shadow:none;cursor:not-allowed;opacity:.6}
+.btn-sm{padding:.45rem 1rem;font-size:.8rem}
+.btn-lg{padding:.9rem 1.8rem;font-size:1rem}
+.btn-block{width:100%;justify-content:center}
+
+/* NAV ROW */
+.nav-row{display:flex;justify-content:space-between;align-items:center;padding-top:.5rem}
+.progress-bar-outer{height:6px;background:var(--gray200);border-radius:3px;overflow:hidden;flex:1;margin:0 1rem}
+.progress-bar-inner{height:100%;background:linear-gradient(90deg,var(--blue),var(--teal));border-radius:3px;transition:width .4s ease}
+
+/* ALERTS */
+.alert{border-radius:var(--radius-sm);padding:.9rem 1.1rem;font-size:.85rem;display:flex;gap:.65rem;align-items:flex-start;line-height:1.6}
+.alert-icon{font-size:1.1rem;flex-shrink:0;margin-top:.05rem}
+.alert-danger{background:var(--red-lt);border:1px solid #fca5a5;color:#7f1d1d}
+.alert-warning{background:var(--yellow-lt);border:1px solid #fde68a;color:#78350f}
+.alert-info{background:var(--sky);border:1px solid #bae6fd;color:#0c4a6e}
+.alert-success{background:var(--green-lt);border:1px solid #bbf7d0;color:#14532d}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(10,22,40,.65);backdrop-filter:blur(4px);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;pointer-events:none;transition:opacity .25s}
+.modal-overlay.open{opacity:1;pointer-events:all}
+.modal{background:#fff;border-radius:var(--radius);padding:2rem;width:min(520px,94vw);box-shadow:var(--shadow-lg);transform:scale(.95) translateY(20px);transition:all .25s;max-height:90vh;overflow-y:auto}
+.modal-overlay.open .modal{transform:scale(1) translateY(0)}
+.modal-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:1.25rem;gap:1rem}
+.modal-title{font-size:1rem;font-weight:700;color:var(--gray800)}
+.modal-close{width:28px;height:28px;border-radius:50%;background:var(--gray200);border:none;cursor:pointer;font-size:1rem;display:flex;align-items:center;justify-content:center;transition:background .15s}
+.modal-close:hover{background:var(--gray400)}
+
+/* HIS WINDOW */
+.his-window{border:2px solid var(--blue);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow)}
+.his-titlebar{background:linear-gradient(90deg,#0f2044 0%,#1a3a6e 100%);padding:.6rem 1rem;display:flex;align-items:center;gap:.5rem}
+.his-dot{width:10px;height:10px;border-radius:50%}
+.his-title{color:#fff;font-family:'JetBrains Mono',monospace;font-size:.78rem;margin-left:.35rem}
+.his-body{background:#f0f4f8;padding:1.25rem}
+.his-row{display:flex;align-items:center;gap:.75rem;padding:.65rem .75rem;margin-bottom:.5rem;background:#fff;border-radius:var(--radius-sm);border:1.5px solid var(--gray200)}
+.his-label{width:100px;font-size:.78rem;color:var(--gray600);flex-shrink:0;font-weight:500}
+.his-value{flex:1;font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--gray800);font-weight:600}
+.his-confirm-btn{width:28px;height:28px;border-radius:50%;border:2px solid var(--gray400);background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.9rem;transition:all .2s;flex-shrink:0}
+.his-confirm-btn.confirmed{background:var(--teal);border-color:var(--teal);color:#fff}
+
+/* TWO-PANEL HIS */
+.his-two-panel{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}
+@media(max-width:700px){.his-two-panel{grid-template-columns:1fr}}
+.his-panel-title{font-size:.72rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--blue-lt);margin-bottom:.75rem;display:flex;align-items:center;gap:.4rem}
+.his-panel-title::before{content:'';display:block;width:3px;height:14px;background:var(--blue-lt);border-radius:2px}
+
+/* INTERACTIVE STEP ROW */
+.his-step-row{display:flex;align-items:center;gap:.6rem;padding:.6rem .75rem;margin-bottom:.4rem;background:#fff;border-radius:var(--radius-sm);border:1.5px solid var(--gray200);transition:all .2s}
+.his-step-row.done{border-color:var(--teal);background:var(--green-lt)}
+.his-step-row.active-step{border-color:var(--blue-lt);background:var(--sky)}
+.his-step-num{width:22px;height:22px;border-radius:50%;background:var(--gray200);color:var(--gray600);font-size:.68rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'JetBrains Mono',monospace}
+.his-step-row.done .his-step-num{background:var(--teal);color:#fff}
+.his-step-row.active-step .his-step-num{background:var(--blue);color:#fff}
+.his-step-label{flex:1;font-size:.8rem;color:var(--gray800)}
+.his-step-row.done .his-step-label{color:#14532d}
+
+/* TIMEOUT CHECKLIST */
+.timeout-check{display:flex;align-items:center;gap:.6rem;padding:.5rem .6rem;border-radius:var(--radius-sm);border:1.5px solid var(--gray200);margin-bottom:.35rem;cursor:pointer;background:#fff;transition:all .2s}
+.timeout-check:hover{border-color:var(--blue-lt);background:var(--sky)}
+.timeout-check.checked{border-color:var(--teal);background:var(--green-lt)}
+.timeout-dot{width:18px;height:18px;border-radius:4px;border:2px solid var(--gray400);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.timeout-check.checked .timeout-dot{background:var(--teal);border-color:var(--teal);color:#fff}
+.timeout-text{font-size:.78rem;color:var(--gray800)}
+
+/* PROC STEPS */
+.proc-steps{display:flex;flex-direction:column;gap:.75rem}
+.proc-step{display:flex;gap:1rem;padding:1rem;border-radius:var(--radius-sm);border:1.5px solid var(--gray200);background:#fff;transition:all .25s;align-items:flex-start}
+.proc-step.active{border-color:var(--blue-lt);background:var(--sky);box-shadow:0 2px 12px rgba(26,86,219,.12)}
+.proc-step.done{border-color:var(--teal);background:var(--green-lt);opacity:.8}
+.proc-step-num{width:32px;height:32px;border-radius:50%;background:var(--gray200);color:var(--gray600);font-weight:700;font-size:.82rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'JetBrains Mono',monospace}
+.proc-step.active .proc-step-num{background:var(--blue);color:#fff}
+.proc-step.done .proc-step-num{background:var(--teal);color:#fff}
+.proc-step-content{flex:1}
+.proc-step-name{font-weight:700;font-size:.9rem;color:var(--gray800)}
+.proc-step-desc{font-size:.82rem;color:var(--gray600);margin-top:.3rem;line-height:1.6}
+
+/* SIGN TAG */
+.sign-tag{display:inline-flex;align-items:center;gap:.3rem;font-size:.75rem;font-weight:700;padding:.25rem .7rem;border-radius:20px;letter-spacing:.04em}
+.sign-in-tag{background:rgba(26,86,219,.1);color:var(--blue);border:1px solid rgba(26,86,219,.3)}
+.sign-out-tag{background:rgba(220,38,38,.1);color:var(--red);border:1px solid rgba(220,38,38,.3)}
+
+/* PAIN SCALE */
+.pain-scale{display:flex;gap:.35rem;flex-wrap:wrap;justify-content:center;margin:1rem 0}
+.pain-btn{width:42px;height:42px;border-radius:8px;border:2px solid var(--gray200);background:#fff;cursor:pointer;font-weight:700;font-size:.9rem;font-family:'JetBrains Mono',monospace;transition:all .18s;display:flex;align-items:center;justify-content:center}
+.pain-btn:hover{border-color:var(--blue-lt);background:var(--sky)}
+.pain-btn.selected{color:#fff;border-color:transparent}
+.pain-0,.pain-1,.pain-2{background:#dcfce7 !important}
+.pain-0.selected,.pain-1.selected,.pain-2.selected{background:#16a34a !important;border-color:#16a34a !important;color:#fff}
+.pain-3,.pain-4,.pain-5{background:#fef9c3 !important}
+.pain-3.selected,.pain-4.selected,.pain-5.selected{background:#ca8a04 !important;border-color:#ca8a04 !important;color:#fff}
+.pain-6,.pain-7{background:#ffedd5 !important}
+.pain-6.selected,.pain-7.selected{background:#ea580c !important;border-color:#ea580c !important;color:#fff}
+.pain-8,.pain-9,.pain-10{background:#fee2e2 !important}
+.pain-8.selected,.pain-9.selected,.pain-10.selected{background:#dc2626 !important;border-color:#dc2626 !important;color:#fff}
+
+/* LABEL GAME */
+#sticker-label{width:110px;min-height:55px;background:#fff;border:2.5px dashed var(--blue-lt);border-radius:6px;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:.5rem .75rem;cursor:grab;transition:transform .4s cubic-bezier(.34,1.4,.64,1),box-shadow .2s,opacity .3s;user-select:none;box-shadow:0 2px 12px rgba(26,86,219,.15);position:relative}
+#sticker-label.rotated{transform:rotate(90deg);box-shadow:0 2px 18px rgba(13,148,136,.3);border-color:var(--teal);cursor:default}
+.sticker-text{font-family:'JetBrains Mono',monospace;font-size:.65rem;font-weight:700;color:var(--navy2);text-align:center;line-height:1.4;white-space:nowrap}
+.sticker-barcode{font-size:.55rem;color:var(--gray400);letter-spacing:.06em;margin-top:.25rem;font-family:'JetBrains Mono',monospace}
+.bottle-container{position:relative}
+.stuck-label{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,.92);border:2px solid var(--teal);border-radius:4px;padding:.3rem .5rem;font-family:'JetBrains Mono',monospace;font-size:.5rem;font-weight:700;color:var(--navy2);text-align:center;line-height:1.4;width:44px;display:none;z-index:5;writing-mode:vertical-rl}
+.stuck-label.visible{display:block}
+.fragile-sticker{position:absolute;top:4px;left:50%;transform:translateX(-50%);background:#fbbf24;border:1.5px solid #f59e0b;border-radius:3px;padding:.1rem .4rem;font-size:.55rem;font-weight:700;color:#78350f;display:none;white-space:nowrap;z-index:6;font-family:'JetBrains Mono',monospace}
+.fragile-sticker.visible{display:block}
+
+/* SPECIMEN CARD */
+.specimen-row{display:flex;align-items:flex-start;gap:1rem;padding:.85rem 1rem;border-radius:var(--radius-sm);border:1.5px solid var(--gray200);background:#fff;margin-bottom:.5rem}
+.specimen-num{width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;font-size:.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-family:'JetBrains Mono',monospace}
+.specimen-content{flex:1}
+.specimen-name{font-weight:700;font-size:.88rem;color:var(--gray800)}
+.specimen-desc{font-size:.78rem;color:var(--gray600);margin-top:.2rem;line-height:1.5}
+.specimen-code{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--blue);font-weight:600;margin-top:.2rem}
+
+/* TUBE */
+.tube-grid{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:.75rem}
+.tube-item{display:flex;flex-direction:column;align-items:center;gap:.4rem;width:70px}
+.tube-cap{width:50px;height:70px;border-radius:6px 6px 10px 10px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px;position:relative;overflow:hidden}
+.tube-cap::before{content:'';position:absolute;top:0;left:0;right:0;height:18px;border-radius:4px 4px 0 0}
+.tube-purple::before{background:#7c3aed}
+.tube-purple{background:linear-gradient(180deg,#9f67fa 0%,#ddd6fe 100%)}
+.tube-deep-green::before{background:#064e3b}
+.tube-deep-green{background:linear-gradient(180deg,#065f46 0%,#a7f3d0 100%)}
+.tube-name{font-size:.68rem;text-align:center;color:var(--gray600);line-height:1.4;font-weight:500}
+.tube-count{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--gray800);font-weight:700}
+
+/* COAG TABLE */
+.coag-table{width:100%;border-collapse:collapse;font-size:.83rem}
+.coag-table th{background:var(--navy2);color:var(--white);padding:.6rem .9rem;text-align:left;font-weight:600}
+.coag-table td{padding:.6rem .9rem;border-bottom:1px solid var(--gray200)}
+.coag-table tr:last-child td{border-bottom:none}
+.coag-table tr:nth-child(even) td{background:var(--gray100)}
+.status-normal{color:var(--teal);font-weight:700}
+.status-warn{color:var(--orange);font-weight:700}
+
+/* QUIZ */
+.quiz-question{font-size:.95rem;font-weight:700;color:var(--gray800);margin-bottom:1rem;line-height:1.6}
+.quiz-options{display:flex;flex-direction:column;gap:.6rem}
+.quiz-option{padding:.8rem 1.1rem;border-radius:var(--radius-sm);border:1.5px solid var(--gray200);background:#fff;cursor:pointer;font-size:.87rem;transition:all .2s;display:flex;align-items:center;gap:.75rem}
+.quiz-option:hover:not(.selected){border-color:var(--blue-lt);background:var(--sky)}
+.quiz-option.correct{border-color:var(--teal);background:var(--green-lt);color:#14532d}
+.quiz-option.wrong{border-color:var(--red);background:var(--red-lt);color:#7f1d1d}
+.quiz-feedback{margin-top:1rem;font-size:.85rem;line-height:1.7;display:none}
+.quiz-feedback.visible{display:block}
+
+/* SECTION TITLE */
+.section-title{font-size:.82rem;font-weight:700;color:var(--gray600);text-transform:uppercase;letter-spacing:.09em;margin-bottom:.75rem;display:flex;align-items:center;gap:.5rem}
+.section-title::after{content:'';flex:1;height:1px;background:var(--gray200)}
+
+/* TAG */
+.tag{display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem;font-weight:600;padding:.2rem .6rem;border-radius:20px}
+.tag-blue{background:rgba(26,86,219,.1);color:var(--blue)}
+.tag-orange{background:rgba(234,88,12,.1);color:var(--orange)}
+.tag-teal{background:rgba(13,148,136,.1);color:var(--teal)}
+
+/* FLASH POPUP */
+.popup-flash{position:fixed;top:80px;left:50%;transform:translateX(-50%) translateY(-20px);border-radius:var(--radius);padding:1.1rem 1.75rem;font-size:.95rem;font-weight:600;box-shadow:0 8px 30px rgba(0,0,0,.3);z-index:9999;opacity:0;pointer-events:none;transition:all .35s cubic-bezier(.34,1.4,.64,1);max-width:480px;text-align:center;line-height:1.5;color:#fff}
+.popup-flash.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:all}
+.flash-icon{font-size:1.4rem;display:block;margin-bottom:.35rem}
+
+/* COMPLETION */
+.completion-card{background:linear-gradient(135deg,#0a1628 0%,#0f3fa6 50%,#0d9488 100%);border-radius:var(--radius);padding:2.5rem 2rem;text-align:center;box-shadow:var(--shadow-lg)}
+.completion-icon{font-size:3.5rem;margin-bottom:.75rem}
+.completion-title{color:#fff;font-size:1.4rem;font-weight:800;margin-bottom:.5rem}
+.completion-desc{color:rgba(255,255,255,.75);font-size:.9rem;line-height:1.7}
+.completion-badge{display:inline-block;margin-top:1.25rem;background:rgba(255,255,255,.15);border:1.5px solid rgba(255,255,255,.35);border-radius:20px;padding:.5rem 1.25rem;color:#fff;font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:600;letter-spacing:.08em}
+
+/* INPUT */
+.his-input{background:#fff;border:1.5px solid var(--gray200);border-radius:6px;padding:.4rem .7rem;font-size:.82rem;font-family:'JetBrains Mono',monospace;color:var(--gray800);outline:none;transition:border .2s;width:100%}
+.his-input:focus{border-color:var(--blue-lt)}
+.his-input-group{display:flex;gap:.4rem;align-items:center}
+.his-input-sm{width:70px;text-align:center}
+
+/* SCROLLBAR */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(148,163,184,.5);border-radius:3px}
+@media(max-width:768px){.sidebar{width:180px}.grid2{grid-template-columns:1fr}.content-area{padding:1rem}}
+@media(max-width:560px){.sidebar{display:none}}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="app-header">
+  <div style="display:flex;align-items:center;gap:.75rem">
+    <span class="logo-badge">13K ER</span>
+    <div>
+      <div class="logo-title">骨髓穿刺 (BMA) 臨床流程模擬器</div>
+      <div class="logo-subtitle">Bone Marrow Aspiration — Clinical Procedure Simulation</div>
+    </div>
+  </div>
+  <div class="header-spacer"></div>
+  <div class="progress-chip" id="progress-chip">第 1 關 / 共 5 關</div>
+</header>
+
+<div class="app-body">
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sidebar-label">流程關卡</div>
+  <div class="step-item active" id="nav-1" onclick="jumpToStage(1)">
+    <div class="step-dot">1</div>
+    <div class="step-text"><div class="step-name">備物清單核對</div><div class="step-sub">物料碼核對</div></div>
+  </div>
+  <div class="step-item" id="nav-2" onclick="jumpToStage(2)">
+    <div class="step-dot">2</div>
+    <div class="step-text"><div class="step-name">檢查前準備</div><div class="step-sub">HIS 核對 ＆ 環境</div></div>
+  </div>
+  <div class="step-item" id="nav-3" onclick="jumpToStage(3)">
+    <div class="step-dot">3</div>
+    <div class="step-text"><div class="step-name">HIS 侵入性處置</div><div class="step-sub">Sign IN ＆ Time Out</div></div>
+  </div>
+  <div class="step-item" id="nav-4" onclick="jumpToStage(4)">
+    <div class="step-dot">4</div>
+    <div class="step-text"><div class="step-name">術中模擬</div><div class="step-sub">擺位→穿刺→抽吸</div></div>
+  </div>
+  <div class="step-item" id="nav-5" onclick="jumpToStage(5)">
+    <div class="step-dot">5</div>
+    <div class="step-text"><div class="step-name">標籤、檢體與術後護理</div><div class="step-sub">Sign OUT ＆ 送檢</div></div>
+  </div>
+</aside>
+
+<!-- CONTENT -->
+<main class="content-area">
+
+<!-- ══════════════════════════════════════════
+     STAGE 1 — 備物清單
+══════════════════════════════════════════ -->
+<div class="stage active" id="stage-1">
+  <div class="stage-hero">
+    <div class="stage-num">01</div>
+    <div class="stage-info">
+      <div class="stage-title">備物清單核對</div>
+      <div class="stage-desc">依序勾選所有備品，確認物料碼正確。⚠ 標示者須額外核對醫囑。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(26,86,219,.18)">🗂</div>
+      <div><div class="card-title">備品清單 — 請逐項勾選確認</div><div class="card-desc">所有項目勾選完畢後，方可進入下一關</div></div>
+    </div>
+    <div class="card-body">
+      <div class="checklist" id="checklist-1">
+
+        <div class="check-item" onclick="toggleCheck(this,'checklist-1')">
+          <div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
+          <div class="check-content"><div class="check-name">骨髓穿刺包</div><div class="check-code">料號：84-921-000014</div></div>
+          <div class="img-placeholder" style="min-height:70px;width:90px;flex-shrink:0">
+            <div class="img-placeholder-icon">📦</div><div>圖片預留</div>
+            <img id="img-bma-pack" src="" alt="骨髓穿刺包 物料圖片" style="display:none">
+          </div>
+        </div>
+
+        <div class="check-item" onclick="toggleCheck(this,'checklist-1')">
+          <div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
+          <div class="check-content"><div class="check-name">骨髓短針</div><div class="check-code">料號：84-065-515268</div></div>
+          <div class="img-placeholder" style="min-height:70px;width:90px;flex-shrink:0">
+            <div class="img-placeholder-icon">💉</div><div>圖片預留</div>
+            <img id="img-short-needle" src="" alt="骨髓短針 物料圖片" style="display:none">
+          </div>
+        </div>
+
+        <div class="check-item" onclick="toggleCheck(this,'checklist-1')">
+          <div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
+          <div class="check-content"><div class="check-name">骨髓長針</div><div class="check-code">料號：84-065-521110</div></div>
+          <div class="img-placeholder" style="min-height:70px;width:90px;flex-shrink:0">
+            <div class="img-placeholder-icon">💉</div><div>圖片預留</div>
+            <img id="img-long-needle" src="" alt="骨髓長針 物料圖片" style="display:none">
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="check-item" onclick="toggleCheck(this,'checklist-1')"><div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div><div class="check-content"><div class="check-name">髮帽</div><div class="check-code">無菌備品</div></div></div>
+          <div class="check-item" onclick="toggleCheck(this,'checklist-1')"><div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div><div class="check-content"><div class="check-name">治療巾</div><div class="check-code">無菌備品</div></div></div>
+          <div class="check-item" onclick="toggleCheck(this,'checklist-1')"><div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div><div class="check-content"><div class="check-name">無菌衣</div><div class="check-code">無菌備品</div></div></div>
+          <div class="check-item" onclick="toggleCheck(this,'checklist-1')"><div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div><div class="check-content"><div class="check-name">2% CHG</div><div class="check-code">消毒用品</div></div></div>
+          <div class="check-item" onclick="toggleCheck(this,'checklist-1')"><div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div><div class="check-content"><div class="check-name">大棉棒數包</div><div class="check-code">消毒用品</div></div></div>
+          <div class="check-item" onclick="toggleCheck(this,'checklist-1')"><div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div><div class="check-content"><div class="check-name">外科長手套</div><div class="check-code">無菌備品</div></div></div>
+        </div>
+
+        <div class="section-title" style="margin-top:.5rem">需核對醫囑</div>
+        <div class="check-item order" onclick="toggleCheck(this,'checklist-1')">
+          <div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
+          <div class="check-content"><div class="check-name">Lidocaine <span class="tag tag-orange">1 PC</span></div><div class="check-code">核對醫囑 — 局部麻醉藥</div></div>
+          <div class="img-placeholder" style="min-height:60px;width:90px;flex-shrink:0"><div class="img-placeholder-icon">💊</div><div>圖片預留</div><img id="img-lidocaine" src="" alt="Lidocaine 藥物圖片" style="display:none"></div>
+        </div>
+        <div class="check-item order" onclick="toggleCheck(this,'checklist-1')">
+          <div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
+          <div class="check-content"><div class="check-name">Heparin <span class="tag tag-orange">1 PC</span></div><div class="check-code">核對醫囑 — 抗凝劑</div></div>
+          <div class="img-placeholder" style="min-height:60px;width:90px;flex-shrink:0"><div class="img-placeholder-icon">💊</div><div>圖片預留</div><img id="img-heparin" src="" alt="Heparin 藥物圖片" style="display:none"></div>
+        </div>
+
+        <div class="section-title" style="margin-top:.5rem">其他用品</div>
+        <div class="grid2">
+          <div class="check-item" onclick="toggleCheck(this,'checklist-1')"><div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div><div class="check-content"><div class="check-name">10cc 空針數支</div><div class="check-code">注射用品</div></div></div>
+          <div class="check-item" onclick="toggleCheck(this,'checklist-1')"><div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div><div class="check-content"><div class="check-name">大寬膠布</div><div class="check-code">固定用品</div></div></div>
+        </div>
+
+        <div class="check-item" onclick="toggleCheck(this,'checklist-1')" style="flex-direction:column;align-items:flex-start">
+          <div style="display:flex;align-items:center;gap:.75rem;width:100%">
+            <div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
+            <div class="check-content"><div class="check-name">試管組</div><div class="check-code">檢體收集用</div></div>
+          </div>
+          <div class="tube-grid" style="padding-left:2.2rem;pointer-events:none">
+            <div class="tube-item"><div class="tube-cap tube-purple"></div><div class="tube-name">小紫頭</div><div class="tube-count">&gt; 3 支</div></div>
+            <div class="tube-item"><div class="tube-cap tube-deep-green"></div><div class="tube-name">大深綠頭</div><div class="tube-count">2 支</div></div>
+            <div class="tube-item"><div class="tube-cap tube-purple" style="background:linear-gradient(180deg,#6d28d9 0%,#c4b5fd 100%)"></div><div class="tube-name">大紫頭</div><div class="tube-count">2 支</div></div>
+          </div>
+        </div>
+
+        <div class="check-item" onclick="toggleCheck(this,'checklist-1')">
+          <div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
+          <div class="check-content"><div class="check-name">福馬林瓶</div><div class="check-code">病理切片用 — 菱形小瓶</div></div>
+          <div class="img-placeholder" style="min-height:60px;width:90px;flex-shrink:0"><div class="img-placeholder-icon">🧪</div><div>圖片預留</div><img id="img-formalin" src="" alt="福馬林瓶 物料圖片" style="display:none"></div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this,'checklist-1')">
+          <div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
+          <div class="check-content"><div class="check-name">玻片 6 片</div><div class="check-code">型號：GLIGMS23</div></div>
+          <div class="img-placeholder" style="min-height:60px;width:90px;flex-shrink:0"><div class="img-placeholder-icon">🔬</div><div>圖片預留</div><img id="img-slides" src="" alt="玻片 GLIGMS23 物料圖片" style="display:none"></div>
+        </div>
+        <div class="check-item" onclick="toggleCheck(this,'checklist-1')">
+          <div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div>
+          <div class="check-content"><div class="check-name">大尿液培養盒</div><div class="check-code">放置玻片用</div></div>
+          <div class="img-placeholder" style="min-height:60px;width:90px;flex-shrink:0"><div class="img-placeholder-icon">🧫</div><div>圖片預留</div><img id="img-culture-box" src="" alt="大尿液培養盒 物料圖片" style="display:none"></div>
+        </div>
+
+      </div>
+      <div class="alert alert-warning" style="margin-top:1rem"><div class="alert-icon">⚠️</div><div>Lidocaine 與 Heparin 為藥物，<strong>必須核對醫囑後</strong>方可備品。如有疑問請詢問主治醫師。</div></div>
+      <div id="s1-err" class="alert alert-danger" style="margin-top:.75rem;display:none"><div class="alert-icon">🚫</div><div>尚有項目未勾選，請完成所有備品核對後再進入下一關。</div></div>
+    </div>
+  </div>
+
+  <div class="nav-row">
+    <span style="font-size:.82rem;color:var(--gray600)"><span id="s1-count">0</span> / <span id="s1-total">0</span> 項已完成</span>
+    <div style="display:flex;align-items:center;gap:.75rem;flex:1;margin:0 1.25rem"><div class="progress-bar-outer"><div class="progress-bar-inner" id="s1-progress" style="width:0%"></div></div></div>
+    <button class="btn btn-primary" onclick="nextStage(1)">進入第 2 關 →</button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     STAGE 2 — 檢查前準備
+══════════════════════════════════════════ -->
+<div class="stage" id="stage-2">
+  <div class="stage-hero">
+    <div class="stage-num">02</div>
+    <div class="stage-info">
+      <div class="stage-title">檢查前準備</div>
+      <div class="stage-desc">確認同意書、環境整備，並完成 HIS v4.0 系統雙重核對。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(13,148,136,.18)">📋</div>
+      <div><div class="card-title">檢查前確認清單</div><div class="card-desc">請逐項確認後方可開啟 HIS 核對</div></div>
+    </div>
+    <div class="card-body">
+      <div class="checklist" id="checklist-2">
+        <div class="check-item" onclick="toggleCheck(this,'checklist-2')"><div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div><div class="check-content"><div class="check-name">骨髓穿刺同意書已填妥並簽署</div><div class="check-code">簽署平板電子同意書</div></div></div>
+        <div class="check-item" onclick="toggleCheck(this,'checklist-2')"><div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div><div class="check-content"><div class="check-name">不需禁食</div><div class="check-code">BMA 為局部麻醉操作，無須禁食</div></div></div>
+        <div class="check-item" onclick="toggleCheck(this,'checklist-2')"><div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div><div class="check-content"><div class="check-name">病床邊雜物清空，椅子收起</div><div class="check-code">確保操作空間充足</div></div></div>
+        <div class="check-item" onclick="toggleCheck(this,'checklist-2')"><div class="check-box"><svg width="12" height="10" viewBox="0 0 12 10" fill="none"><path d="M1 5L4.5 8.5L11 1.5" stroke="white" stroke-width="2" stroke-linecap="round"/></svg></div><div class="check-content"><div class="check-name">確認凝血功能報告</div><div class="check-code">PLT / PT / APTT</div></div></div>
+      </div>
+      <div style="margin-top:1.25rem">
+        <div class="section-title">HIS 凝血功能報告（模擬值）</div>
+        <table class="coag-table" style="border-radius:var(--radius-sm);overflow:hidden">
+          <thead><tr><th>項目</th><th>數值</th><th>參考範圍</th><th>狀態</th></tr></thead>
+          <tbody>
+            <tr><td>PLT（血小板）</td><td>89 × 10³/μL</td><td>150–400</td><td class="status-warn">⚠ 偏低</td></tr>
+            <tr><td>PT（凝血酶原時間）</td><td>13.2 秒</td><td>11–13.5</td><td class="status-normal">✓ 正常</td></tr>
+            <tr><td>APTT（活化凝血時間）</td><td>32.5 秒</td><td>24–36</td><td class="status-normal">✓ 正常</td></tr>
+          </tbody>
+        </table>
+        <div class="alert alert-warning" style="margin-top:.75rem"><div class="alert-icon">⚠️</div><div>PLT 89 × 10³/μL，<strong>低於 100</strong>，屬凝血功能異常！術後加壓需延長至 <strong>≥ 1 小時</strong>，密切觀察滲血情況。</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(26,86,219,.18)">🖥</div>
+      <div><div class="card-title">HIS 病人核對系統 v4.0</div><div class="card-desc">請逐行點選「✓」確認資料正確</div></div>
+    </div>
+    <div class="card-body">
+      <div class="his-window">
+        <div class="his-titlebar">
+          <div class="his-dot" style="background:#ff5f57"></div>
+          <div class="his-dot" style="background:#febc2e"></div>
+          <div class="his-dot" style="background:#28c840"></div>
+          <div class="his-title">■ 醫院資訊系統 HIS v4.0 — 檢查前病人核對</div>
+        </div>
+        <div class="his-body">
+          <div class="his-row"><div class="his-label">病人姓名</div><div class="his-value">王　○　明</div><button class="his-confirm-btn" id="his-btn-1" onclick="confirmHIS(1)">✓</button></div>
+          <div class="his-row"><div class="his-label">出生日期</div><div class="his-value">1968 / 04 / 22</div><button class="his-confirm-btn" id="his-btn-2" onclick="confirmHIS(2)">✓</button></div>
+          <div class="his-row"><div class="his-label">病歷號碼</div><div class="his-value">13K-202406-0089</div><button class="his-confirm-btn" id="his-btn-3" onclick="confirmHIS(3)">✓</button></div>
+          <div class="his-row"><div class="his-label">處置項目</div><div class="his-value">骨髓穿刺抽吸 (BMA)</div><button class="his-confirm-btn" id="his-btn-4" onclick="confirmHIS(4)">✓</button></div>
+          <div class="his-row"><div class="his-label">醫師</div><div class="his-value">陳主治醫師</div><button class="his-confirm-btn" id="his-btn-5" onclick="confirmHIS(5)">✓</button></div>
+          <div style="margin-top:.75rem;padding:.6rem .75rem;background:#fff;border-radius:var(--radius-sm);border:1.5px dashed var(--gray200)">
+            <div style="font-size:.76rem;color:var(--gray400);font-family:'JetBrains Mono',monospace">HIS 核對進度：<span id="his-progress-text">0 / 5</span></div>
+            <div class="progress-bar-outer" style="margin-top:.4rem;height:4px"><div class="progress-bar-inner" id="his-progress-bar" style="width:0%;background:linear-gradient(90deg,var(--teal),var(--blue))"></div></div>
+          </div>
+        </div>
+      </div>
+      <div id="s2-err" class="alert alert-danger" style="margin-top:.75rem;display:none"><div class="alert-icon">🚫</div><div>請完成術前清單勾選及 HIS 所有核對項目，方可進入下一關。</div></div>
+    </div>
+  </div>
+
+  <div class="nav-row">
+    <button class="btn btn-outline" onclick="prevStage(2)">← 返回第 1 關</button>
+    <button class="btn btn-primary" onclick="nextStage(2)">進入第 3 關 →</button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     STAGE 3 — HIS 侵入性處置暨病理組織採檢作業
+══════════════════════════════════════════ -->
+<div class="stage" id="stage-3">
+  <div class="stage-hero">
+    <div class="stage-num">03</div>
+    <div class="stage-info">
+      <div class="stage-title">HIS 侵入性處置暨病理組織採檢作業</div>
+      <div class="stage-desc">完成左欄作業設定後，右欄掃描手圈完成 Sign IN 及 Time Out 確認。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(26,86,219,.18)">🖥</div>
+      <div><div class="card-title">侵入性處置暨病理組織採檢作業</div><div class="card-desc">侵入性處置暨病理組織採檢作業 HIS v4.0 — 檢查前登錄系統</div></div>
+    </div>
+    <div class="card-body">
+      <div class="his-window">
+        <div class="his-titlebar">
+          <div class="his-dot" style="background:#ff5f57"></div>
+          <div class="his-dot" style="background:#febc2e"></div>
+          <div class="his-dot" style="background:#28c840"></div>
+          <div class="his-title">■ HIS v4.0 — 侵入性處置暨病理組織採檢作業</div>
+        </div>
+        <div class="his-body">
+          <div class="his-two-panel">
+
+            <!-- LEFT PANEL -->
+            <div>
+              <div class="his-panel-title">左欄：處置登錄</div>
+
+              <!-- L1 取消非病理組織 -->
+              <div class="his-step-row active-step" id="l1-row">
+                <div class="his-step-num">L1</div>
+                <div style="flex:1">
+                  <div style="font-size:.8rem;font-weight:600;color:var(--gray800);margin-bottom:.35rem">取消「非病理組織」勾選</div>
+                  <div style="display:flex;align-items:center;gap:.5rem">
+                    <div id="nonpatho-checkbox" onclick="clickNonPatho()" style="width:18px;height:18px;border:2px solid var(--blue);border-radius:4px;background:#bfdbfe;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:.7rem;flex-shrink:0">✓</div>
+                    <span style="font-size:.75rem;color:var(--gray600)">非病理組織（點擊取消勾選）</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- L2 掃描同意書 -->
+              <div class="his-step-row" id="l2-row" style="opacity:.5">
+                <div class="his-step-num">L2</div>
+                <div style="flex:1">
+                  <div style="font-size:.8rem;font-weight:600;color:var(--gray800);margin-bottom:.35rem">掃描骨髓穿刺同意書</div>
+                  <button class="btn btn-primary btn-sm" id="l2-btn" onclick="scanConsent()" disabled>📷 模擬掃描</button>
+                  <div id="l2-result" style="display:none;margin-top:.4rem;font-size:.72rem;color:var(--teal);font-family:'JetBrains Mono',monospace">✓ 自動帶出：王○明｜BMA｜13K-202406-0089</div>
+                </div>
+              </div>
+
+              <!-- L3 輸入件數 + 列印條碼 -->
+              <div class="his-step-row" id="l3-row" style="opacity:.5">
+                <div class="his-step-num">L3</div>
+                <div style="flex:1">
+                  <div style="font-size:.8rem;font-weight:600;color:var(--gray800);margin-bottom:.35rem">病理組織檢體件數 → 列印條碼</div>
+                  <div class="his-input-group">
+                    <input class="his-input his-input-sm" type="number" id="specimen-count-input" value="1" min="1" max="9" disabled>
+                    <button class="btn btn-teal btn-sm" id="l3-btn" onclick="printBarcode()" disabled>🖨 列印條碼</button>
+                  </div>
+                  <div id="l3-result" style="display:none;margin-top:.4rem;font-size:.72rem;color:var(--teal);font-family:'JetBrains Mono',monospace">✓ 條碼已列印</div>
+                </div>
+              </div>
+
+              <!-- L4 輸入醫師代號 -->
+              <div class="his-step-row" id="l4-row" style="opacity:.5">
+                <div class="his-step-num">L4</div>
+                <div style="flex:1">
+                  <div style="font-size:.8rem;font-weight:600;color:var(--gray800);margin-bottom:.35rem">輸入執行醫師代號</div>
+                  <div class="his-input-group">
+                    <input class="his-input" type="text" id="doctor-code-input" placeholder="輸入醫師代號" disabled>
+                    <button class="btn btn-teal btn-sm" id="l4-btn" onclick="confirmDoctorCode()" disabled>確認</button>
+                  </div>
+                  <div id="l4-result" style="display:none;margin-top:.4rem;font-size:.72rem;color:var(--teal);font-family:'JetBrains Mono',monospace" id="l4-result">✓ 執行醫師已確認</div>
+                </div>
+              </div>
+
+              <div id="left-done-badge" style="display:none" class="alert alert-success" style="margin-top:.5rem">
+                <div class="alert-icon">✅</div><div style="font-size:.8rem">左欄作業完成，請繼續右欄操作</div>
+              </div>
+            </div>
+
+            <!-- RIGHT PANEL -->
+            <div>
+              <div class="his-panel-title">右欄：病人辨識 ＆ Sign IN</div>
+
+              <!-- R1 掃描手圈 -->
+              <div class="his-step-row" id="r1-row" style="opacity:.5">
+                <div class="his-step-num">R1</div>
+                <div style="flex:1">
+                  <div style="font-size:.8rem;font-weight:600;color:var(--gray800);margin-bottom:.35rem">病歷號條碼 — 掃描病人手圈</div>
+                  <button class="btn btn-primary btn-sm" id="r1-btn" onclick="scanWristband()" disabled>📲 模擬掃描手圈</button>
+                  <div id="r1-result" style="display:none;margin-top:.4rem;font-size:.72rem;color:var(--teal);font-family:'JetBrains Mono',monospace">✓ 辨識成功：王○明 | 13K-202406-0089</div>
+                </div>
+              </div>
+
+              <!-- R2 Time Out 核對 -->
+              <div id="r2-section" style="opacity:.5;pointer-events:none;margin-top:.5rem">
+                <div style="font-size:.78rem;font-weight:700;color:var(--gray800);margin-bottom:.4rem;display:flex;align-items:center;gap:.35rem">
+                  <span class="sign-tag sign-in-tag">Sign IN / Time Out</span> 與醫師共同確認
+                </div>
+                <div onclick="toggleTimeout(this,0)" class="timeout-check"><div class="timeout-dot"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="timeout-text">病人姓名正確</div></div>
+                <div onclick="toggleTimeout(this,1)" class="timeout-check"><div class="timeout-dot"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="timeout-text">出生年月日正確</div></div>
+                <div onclick="toggleTimeout(this,2)" class="timeout-check"><div class="timeout-dot"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="timeout-text">處置項目及部位正確</div></div>
+                <div onclick="toggleTimeout(this,3)" class="timeout-check"><div class="timeout-dot"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="timeout-text">處置同意書確認</div></div>
+                <div onclick="toggleTimeout(this,4)" class="timeout-check"><div class="timeout-dot"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="timeout-text">器械、材料及設備確認</div></div>
+              </div>
+
+              <!-- R3 Sign IN Button -->
+              <div style="margin-top:.75rem">
+                <button class="btn btn-primary btn-block" id="signin-btn" onclick="doSignIn()" disabled>
+                  ✅ 點選 Sign IN 確認
+                </button>
+                <div id="signin-done-msg" style="display:none" class="alert alert-success" style="margin-top:.5rem">
+                  <div class="alert-icon">✅</div>
+                  <div style="font-size:.8rem">Sign IN 完成！疼痛評估已記錄，可進入術中模擬。</div>
+                </div>
+              </div>
+            </div>
+
+          </div><!-- /two-panel -->
+        </div>
+      </div>
+      <div id="s3-err" class="alert alert-danger" style="margin-top:.75rem;display:none"><div class="alert-icon">🚫</div><div>請完成左欄全部設定、右欄掃描手圈、Time Out 核對及 Sign IN 後方可進入下一關。</div></div>
+    </div>
+  </div>
+
+  <div class="nav-row">
+    <button class="btn btn-outline" onclick="prevStage(3)">← 返回第 2 關</button>
+    <button class="btn btn-primary" onclick="nextStage(3)">進入第 4 關 →</button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     STAGE 4 — 術中模擬
+══════════════════════════════════════════ -->
+<div class="stage" id="stage-4">
+  <div class="stage-hero">
+    <div class="stage-num">04</div>
+    <div class="stage-info">
+      <div class="stage-title">檢查中模擬與臨床提醒</div>
+      <div class="stage-desc">依序完成四個步驟，注意關鍵時機的護理介入。</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(13,148,136,.18)">🛏</div>
+      <div><div class="card-title">步驟一：擺位教學</div><div class="card-desc">正確體位 — 側臥抱膝（胎兒姿勢）</div></div>
+    </div>
+    <div class="card-body">
+      <div class="grid2" style="gap:1.25rem;align-items:flex-start">
+        <div>
+          <div class="img-placeholder" style="min-height:200px">
+            <div class="img-placeholder-icon" style="font-size:2.5rem">🛏</div>
+            <div style="font-weight:600">擺位示意圖</div>
+            <div style="font-size:.7rem;color:var(--gray400);margin-top:.25rem">請替換為病人側臥抱膝姿勢照片</div>
+            <img id="img-positioning" src="" alt="骨髓穿刺擺位 側臥抱膝姿勢 示意圖" style="display:none">
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:.75rem">
+          <div class="alert alert-info"><div class="alert-icon">ℹ️</div><div><strong>側臥抱膝（胎兒姿勢）</strong><br>病人側臥，雙腳屈膝靠近胸部，充分暴露後腸骨棘（PSIS），方便醫師操作。</div></div>
+          <div class="alert alert-warning"><div class="alert-icon">📌</div><div>協助病人保持體位穩定，術前告知「請保持不動，有助縮短操作時間」。</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(26,86,219,.18)">▶</div>
+      <div><div class="card-title">術中步驟模擬</div><div class="card-desc">點擊「執行」逐步完成操作，抽吸步驟有關鍵護理提醒</div></div>
+    </div>
+    <div class="card-body">
+      <div class="proc-steps">
+        <div class="proc-step active" id="proc-1">
+          <div class="proc-step-num">1</div>
+          <div class="proc-step-content"><div class="proc-step-name">皮膚消毒</div><div class="proc-step-desc">以 2% CHG 大棉棒由穿刺點中心向外螺旋消毒，重複 2–3 次，待乾燥後鋪無菌治療巾。</div></div>
+          <button class="btn btn-teal btn-sm" onclick="execStep(1)">執行 ✓</button>
+        </div>
+        <div class="proc-step" id="proc-2">
+          <div class="proc-step-num">2</div>
+          <div class="proc-step-content"><div class="proc-step-name">局部麻醉</div><div class="proc-step-desc">醫師以 Lidocaine 於穿刺點皮下及骨膜進行局部麻醉，護理師協助核對藥物劑量。</div></div>
+          <button class="btn btn-teal btn-sm" onclick="execStep(2)" disabled>執行 ✓</button>
+        </div>
+        <div class="proc-step" id="proc-3">
+          <div class="proc-step-num">3</div>
+          <div class="proc-step-content"><div class="proc-step-name">穿刺進針</div><div class="proc-step-desc">醫師以旋轉方式將骨髓穿刺針穿入後腸骨棘，達骨髓腔時有「落空感」。護理師安慰病人。</div></div>
+          <button class="btn btn-teal btn-sm" onclick="execStep(3)" disabled>執行 ✓</button>
+        </div>
+        <div class="proc-step" id="proc-4">
+          <div class="proc-step-num">4</div>
+          <div class="proc-step-content"><div class="proc-step-name">抽吸骨髓液</div><div class="proc-step-desc">接上 10cc 空針，快速抽取 0.5–1 mL 骨髓液。<strong style="color:var(--red)">此步驟會引起短暫強烈酸痛感，需立即安撫病人！</strong></div></div>
+          <button class="btn btn-danger btn-sm" onclick="execStep(4)" disabled>⚠ 執行抽吸</button>
+        </div>
+      </div>
+      <div id="proc-done-msg" class="alert alert-success" style="margin-top:1.25rem;display:none"><div class="alert-icon">✅</div><div><strong>術中步驟全部完成！</strong> 立即加壓穿刺點，準備收集檢體，並進入術後流程。</div></div>
+      <div id="s4-err" class="alert alert-danger" style="margin-top:.75rem;display:none"><div class="alert-icon">🚫</div><div>請完成所有術中步驟後方可進入下一關。</div></div>
+    </div>
+  </div>
+
+  <div class="nav-row">
+    <button class="btn btn-outline" onclick="prevStage(4)">← 返回第 3 關</button>
+    <button class="btn btn-primary" onclick="nextStage(4)">進入第 5 關 →</button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     STAGE 5 — 標籤、檢體送檢與術後護理
+══════════════════════════════════════════ -->
+<div class="stage" id="stage-5">
+  <div class="stage-hero">
+    <div class="stage-num">05</div>
+    <div class="stage-info">
+      <div class="stage-title">標籤、檢體送檢與術後護理</div>
+      <div class="stage-desc">完成 Sign OUT → 檢體確認送檢 → 標籤操作 → 術後衛教評量。</div>
+    </div>
+  </div>
+
+  <!-- SIGN OUT WORKFLOW -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(220,38,38,.18)">🖥</div>
+      <div>
+        <div class="card-title">HIS Sign OUT — 採檢後作業流程</div>
+        <div class="card-desc">侵入性處置暨病理組織採檢作業 — 右欄作業</div>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="proc-steps" id="signout-steps">
+
+        <div class="proc-step active" id="so-1">
+          <div class="proc-step-num">1</div>
+          <div class="proc-step-content">
+            <div class="proc-step-name">掃描病人手圈條碼</div>
+            <div class="proc-step-desc">右欄「病歷號條碼」— 再次掃描病人手圈，執行術後病人辨識。</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="soStep(1)">📲 掃描手圈</button>
+        </div>
+
+        <div class="proc-step" id="so-2">
+          <div class="proc-step-num">2</div>
+          <div class="proc-step-content">
+            <div class="proc-step-name">輸入檢體件數後按 Enter</div>
+            <div class="proc-step-desc">確認採集檢體件數（與檢查前登錄一致）。</div>
+            <div class="his-input-group" style="margin-top:.5rem;max-width:200px">
+              <input class="his-input his-input-sm" type="number" id="so-count-input" value="1" min="1" max="9" disabled>
+              <button class="btn btn-teal btn-sm" id="so-enter-btn" onclick="soStep(2)" disabled>Enter ↵</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="proc-step" id="so-3">
+          <div class="proc-step-num">3</div>
+          <div class="proc-step-content">
+            <div class="proc-step-name">刷取病理組織檢體標籤</div>
+            <div class="proc-step-desc">掃描已列印的病理組織檢體條碼標籤，系統自動記錄。</div>
+          </div>
+          <button class="btn btn-teal btn-sm" id="so-3-btn" onclick="soStep(3)" disabled>🏷 刷取標籤</button>
+        </div>
+
+        <div class="proc-step" id="so-4">
+          <div class="proc-step-num">4</div>
+          <div class="proc-step-content">
+            <div class="proc-step-name"><span class="sign-tag sign-out-tag">Sign OUT</span> — Time Out 再次確認</div>
+            <div class="proc-step-desc">與醫師共同確認以下所有項目後，方可點選 Sign Out。</div>
+            <div id="so-checks" style="margin-top:.6rem;pointer-events:none;opacity:.5">
+              <div onclick="toggleSoCheck(this,0)" class="timeout-check"><div class="timeout-dot"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="timeout-text">處置項目及部位正確</div></div>
+              <div onclick="toggleSoCheck(this,1)" class="timeout-check"><div class="timeout-dot"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="timeout-text">檢體與標記正確</div></div>
+              <div onclick="toggleSoCheck(this,2)" class="timeout-check"><div class="timeout-dot"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="timeout-text">器械設備材料清點正確</div></div>
+              <div onclick="toggleSoCheck(this,3)" class="timeout-check"><div class="timeout-dot"><svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg></div><div class="timeout-text">完成處置後照護注意事項</div></div>
+            </div>
+            <button class="btn btn-danger btn-sm" id="signout-btn" onclick="doSignOut()" disabled style="margin-top:.6rem">點選 Sign Out 確認</button>
+          </div>
+        </div>
+
+        <div class="proc-step" id="so-5">
+          <div class="proc-step-num">5</div>
+          <div class="proc-step-content">
+            <div class="proc-step-name">左下方點選「檢體確認」</div>
+            <div class="proc-step-desc">Sign OUT 完成後，點選左下方「檢體確認」開啟解剖病理組織送檢作業。<br><span style="font-size:.75rem;color:var(--green)">✓ 系統已自動帶入護理紀錄</span></div>
+          </div>
+          <button class="btn btn-orange btn-sm" id="so-5-btn" onclick="soStep(5)" disabled>📋 檢體確認</button>
+        </div>
+
+      </div>
+
+      <!-- 解剖病理送檢作業 (shows after so-5) -->
+      <div id="pathology-panel" style="display:none;margin-top:1rem">
+        <div style="background:linear-gradient(135deg,#0f2044 0%,#1a3a6e 100%);border-radius:var(--radius-sm) var(--radius-sm) 0 0;padding:.65rem 1rem;display:flex;align-items:center;gap:.5rem">
+          <div class="his-dot" style="background:#ff5f57"></div>
+          <div class="his-dot" style="background:#febc2e"></div>
+          <div class="his-dot" style="background:#28c840"></div>
+          <span style="color:#fff;font-family:'JetBrains Mono',monospace;font-size:.78rem;margin-left:.35rem">■ 解剖病理組織送檢作業</span>
+        </div>
+        <div style="background:#f0f4f8;border:2px solid var(--blue);border-top:none;border-radius:0 0 var(--radius-sm) var(--radius-sm);padding:1rem">
+          <div class="proc-steps" id="pathology-steps">
+            <div class="proc-step active" id="p1">
+              <div class="proc-step-num" style="background:var(--orange);color:#fff">P1</div>
+              <div class="proc-step-content">
+                <div class="proc-step-name">掃描病理組織委託單左上角編號</div>
+                <div class="proc-step-desc">掃描委託單左上角條碼，系統自動帶入送檢資訊。</div>
+              </div>
+              <button class="btn btn-orange btn-sm" onclick="pathStep(1)">📷 掃描編號</button>
+            </div>
+            <div class="proc-step" id="p2">
+              <div class="proc-step-num" style="background:var(--orange);color:#fff;opacity:.5">P2</div>
+              <div class="proc-step-content">
+                <div class="proc-step-name">依序掃描各檢體條碼</div>
+                <div class="proc-step-desc">下方「檢體條碼」欄位，依序掃描每件病理組織檢體條碼。</div>
+              </div>
+              <button class="btn btn-orange btn-sm" onclick="pathStep(2)" disabled id="p2-btn">📲 掃描檢體</button>
+            </div>
+            <div class="proc-step" id="p3">
+              <div class="proc-step-num" style="background:var(--orange);color:#fff;opacity:.5">P3</div>
+              <div class="proc-step-content">
+                <div class="proc-step-name">儲存 → 列印送檢清單</div>
+                <div class="proc-step-desc">按右上角「儲存」→ 系統自動帶出送檢清單列印畫面 → 列印後連同檢體、委託單一起送檢。</div>
+              </div>
+              <button class="btn btn-primary btn-sm" onclick="pathStep(3)" disabled id="p3-btn">💾 儲存並列印</button>
+            </div>
+          </div>
+          <div id="pathology-done-msg" class="alert alert-success" style="margin-top:.75rem;display:none">
+            <div class="alert-icon">✅</div>
+            <div><strong>送檢作業完成！</strong> 送檢清單已列印，請連同檢體與委託單一起送至病理科。</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="s5-signout-err" class="alert alert-danger" style="margin-top:.75rem;display:none"><div class="alert-icon">🚫</div><div id="s5-signout-err-msg">請依序完成 Sign OUT 全部步驟。</div></div>
+    </div>
+  </div>
+
+  <!-- 檢體準備與送檢 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(234,88,12,.18)">🧪</div>
+      <div><div class="card-title">檢體準備與標籤</div><div class="card-desc">印出標籤紙後依各檢體類型正確黏貼</div></div>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-info" style="margin-bottom:1rem"><div class="alert-icon">🖨</div><div>系統列印條碼完成後，依下列說明將標籤貼至對應位置。</div></div>
+
+      <div class="specimen-row">
+        <div class="specimen-num">003</div>
+        <div class="specimen-content">
+          <div class="specimen-name">003 抽血項目標籤</div>
+          <div class="specimen-desc">貼於小紫頭試管</div>
+          <div class="specimen-code">小紫頭（EDTA 管）×3支以上</div>
+        </div>
+        <div class="img-placeholder" style="min-height:70px;width:90px;flex-shrink:0">
+          <div class="img-placeholder-icon">🟣</div><div>圖片預留</div>
+          <img id="img-003-tube" src="" alt="003抽血標籤貼於小紫頭試管 示意圖" style="display:none">
+        </div>
+      </div>
+
+      <div class="specimen-row">
+        <div class="specimen-num">004</div>
+        <div class="specimen-content">
+          <div class="specimen-name">004 標籤</div>
+          <div class="specimen-desc">貼於檢查單上</div>
+          <div class="specimen-code">對應申請單聯</div>
+        </div>
+        <div class="img-placeholder" style="min-height:70px;width:90px;flex-shrink:0">
+          <div class="img-placeholder-icon">📄</div><div>圖片預留</div>
+          <img id="img-004-form" src="" alt="004標籤貼於檢查單 示意圖" style="display:none">
+        </div>
+      </div>
+
+      <div class="specimen-row">
+        <div class="specimen-num" style="background:var(--teal)">C77</div>
+        <div class="specimen-content">
+          <div class="specimen-name">檢查單 (C77-033) + 大紫頭標籤</div>
+          <div class="specimen-desc">於 C77-033 檢查單附上大紫頭試管並貼上對應標籤紙</div>
+          <div class="specimen-code">大紫頭 × 2支</div>
+        </div>
+        <div class="img-placeholder" style="min-height:70px;width:90px;flex-shrink:0">
+          <div class="img-placeholder-icon">📋</div><div>圖片預留</div>
+          <img id="img-c77-form" src="" alt="C77-033檢查單附大紫頭貼標籤 示意圖" style="display:none">
+        </div>
+      </div>
+
+      <div class="specimen-row">
+        <div class="specimen-num" style="background:var(--navy2)">深綠</div>
+        <div class="specimen-content">
+          <div class="specimen-name">大深綠頭試管</div>
+          <div class="specimen-desc">貼上對應檢驗條碼貼紙</div>
+          <div class="specimen-code">檢驗代號：L72-278</div>
+        </div>
+        <div class="img-placeholder" style="min-height:70px;width:90px;flex-shrink:0">
+          <div class="img-placeholder-icon">🟢</div><div>圖片預留</div>
+          <img id="img-deepgreen-tube" src="" alt="深綠頭試管L72-278標籤 示意圖" style="display:none">
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 福馬林瓶標籤互動遊戲 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(234,88,12,.18)">🏷</div>
+      <div><div class="card-title">互動挑戰：福馬林瓶標籤貼示範</div><div class="card-desc">旋轉標籤為直式 → 貼上瓶身 → 貼易碎貼紙</div></div>
+    </div>
+    <div class="card-body">
+      <div class="alert alert-warning" style="margin-bottom:1.25rem">
+        <div class="alert-icon">📌</div>
+        <div>病理組織檢體以福馬林瓶裝。因瓶身為<strong>小瓶菱狀設計</strong>，條碼標籤必須<strong>貼直式</strong>才能讓掃描機正確辨識。並於<strong>瓶蓋處貼上易碎貼紙</strong>。</div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;align-items:center;gap:1.5rem;padding:.5rem">
+        <div style="display:flex;align-items:center;justify-content:center;gap:2.5rem;flex-wrap:wrap">
+          <!-- BOTTLE -->
+          <div class="bottle-container" id="bottle-container">
+            <svg width="100" height="170" viewBox="0 0 100 170" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="bottleGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" style="stop-color:#d4a017"/><stop offset="40%" style="stop-color:#f5d070"/><stop offset="100%" style="stop-color:#b8860b"/></linearGradient>
+                <linearGradient id="lidGrad" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" style="stop-color:#555"/><stop offset="100%" style="stop-color:#333"/></linearGradient>
+              </defs>
+              <polygon points="50,30 90,75 80,155 20,155 10,75" fill="url(#bottleGrad)" stroke="#a07010" stroke-width="1.5"/>
+              <polygon points="50,32 60,60 58,150 42,150 40,60" fill="rgba(255,255,255,0.15)"/>
+              <rect x="38" y="18" width="24" height="16" rx="3" fill="url(#lidGrad)"/>
+              <rect x="30" y="75" width="40" height="55" rx="3" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.25)" stroke-width="1" stroke-dasharray="3,2"/>
+              <text x="50" y="168" text-anchor="middle" font-size="8" fill="#555" font-family="monospace">福馬林瓶</text>
+            </svg>
+            <div class="stuck-label" id="stuck-label">
+              <span style="font-size:.45rem;font-weight:800">王○明</span><br>
+              <span style="font-size:.4rem">BMA-240606</span><br>
+              <span style="font-size:.38rem;letter-spacing:.06em">|||||||||||</span>
+            </div>
+            <div class="fragile-sticker" id="fragile-sticker">⚠ 易碎</div>
+          </div>
+
+          <div style="font-size:1.5rem;color:var(--gray400)">→</div>
+
+          <!-- STICKER -->
+          <div style="display:flex;flex-direction:column;align-items:center;gap:.75rem">
+            <div id="sticker-label">
+              <div class="sticker-text">王　○　明<br>BMA-240606<br>福馬林瓶</div>
+              <div class="sticker-barcode">||||||||||||||</div>
+            </div>
+            <div style="font-size:.75rem;color:var(--gray600);text-align:center">
+              標籤方向：<span id="label-orientation" style="font-weight:700;color:var(--orange)">橫式 ⚠</span>
+            </div>
+            <div style="display:flex;gap:.5rem;flex-wrap:wrap;justify-content:center">
+              <button class="btn btn-outline btn-sm" id="btn-rotate" onclick="rotateLabel()">↺ 旋轉標籤</button>
+              <button class="btn btn-primary btn-sm" id="btn-stick" onclick="stickLabel()" disabled>貼上瓶身</button>
+              <button class="btn btn-orange btn-sm" id="btn-fragile" onclick="addFragileSticker()" disabled>🔖 貼易碎貼紙</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="label-success-msg" class="alert alert-success" style="width:100%;display:none">
+          <div class="alert-icon">✅</div><div><strong>標籤貼示完成！</strong> 直式條碼標籤已正確貼於菱形小瓶，並已於瓶蓋貼上易碎貼紙。</div>
+        </div>
+
+        <div class="alert alert-info" style="width:100%">
+          <div class="alert-icon">💡</div>
+          <div>步驟：先點「旋轉標籤」使標籤變為直式 → 點「貼上瓶身」 → 點「貼易碎貼紙」於瓶蓋處</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 術後衛教測驗 -->
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:rgba(13,148,136,.18)">🩺</div>
+      <div><div class="card-title">衛教挑戰 — 術後護理評量</div><div class="card-desc">請選出正確答案</div></div>
+    </div>
+    <div class="card-body" style="display:flex;flex-direction:column;gap:1.75rem">
+
+      <div id="quiz-1">
+        <div class="quiz-question">Q1. 骨髓穿刺後加壓時間的正確說法是？</div>
+        <div class="quiz-options">
+          <div class="quiz-option" onclick="answerQuiz(1,this,false)"><span class="quiz-icon">○</span> 加壓 10–15 分鐘即可，無論凝血功能</div>
+          <div class="quiz-option" onclick="answerQuiz(1,this,true)"><span class="quiz-icon">○</span> 加壓 30–60 分鐘；凝血功能異常者延長至 ≥ 1 小時</div>
+          <div class="quiz-option" onclick="answerQuiz(1,this,false)"><span class="quiz-icon">○</span> 加壓 5 分鐘後即可讓病人自由活動</div>
+        </div>
+        <div class="quiz-feedback" id="qfb-1"><div class="alert alert-success"><div class="alert-icon">✅</div><div><strong>正確！</strong> 一般加壓 30–60 分；凝血功能異常（本案 PLT 89 偏低）加壓 ≥ 1 小時，密切觀察滲血。</div></div></div>
+        <div class="quiz-feedback" id="qfb-1w"><div class="alert alert-danger"><div class="alert-icon">❌</div><div>答案有誤。應加壓 <strong>30–60 分</strong>，凝血異常者需 <strong>≥ 1 小時</strong>。加壓不足易造成血腫！</div></div></div>
+      </div>
+
+      <div id="quiz-2">
+        <div class="quiz-question">Q2. 術後平躺時間及傷口護理的正確說法是？</div>
+        <div class="quiz-options">
+          <div class="quiz-option" onclick="answerQuiz(2,this,false)"><span class="quiz-icon">○</span> 術後可立即坐起，24 小時後即可沖水</div>
+          <div class="quiz-option" onclick="answerQuiz(2,this,false)"><span class="quiz-icon">○</span> 術後平躺 30 分鐘，48 小時後可沖水</div>
+          <div class="quiz-option" onclick="answerQuiz(2,this,true)"><span class="quiz-icon">○</span> 術後平躺 60 分鐘，24–48 小時內傷口不可碰水</div>
+        </div>
+        <div class="quiz-feedback" id="qfb-2"><div class="alert alert-success"><div class="alert-icon">✅</div><div><strong>正確！</strong> 術後平躺 60 分，24–48 小時傷口不可碰水，避免感染。</div></div></div>
+        <div class="quiz-feedback" id="qfb-2w"><div class="alert alert-danger"><div class="alert-icon">❌</div><div>答案有誤。應<strong>平躺 60 分鐘</strong>；傷口 <strong>24–48 小時不可碰水</strong>！</div></div></div>
+      </div>
+
+      <div id="s5-err" class="alert alert-danger" style="display:none"><div class="alert-icon">🚫</div><div id="s5-err-msg">請依序完成所有步驟後方可完成訓練。</div></div>
+    </div>
+  </div>
+
+  <div class="nav-row">
+    <button class="btn btn-outline" onclick="prevStage(5)">← 返回第 4 關</button>
+    <button class="btn btn-primary btn-lg" onclick="finish()">完成訓練 🎓</button>
+  </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════
+     STAGE 6 — COMPLETION
+══════════════════════════════════════════ -->
+<div class="stage" id="stage-6">
+  <div class="completion-card">
+    <div class="completion-icon">🎓</div>
+    <div class="completion-title">訓練完成！</div>
+    <div class="completion-desc">恭喜您完成「13K 骨髓穿刺 (BMA) 臨床流程模擬器」全部五關。<br>您已熟悉備物核對、術前 HIS 核對、侵入性處置 Sign IN/OUT、術中護理提醒，以及正確的檢體標籤與術後護理原則。</div>
+    <div class="completion-badge">BMA PROCEDURE CERTIFIED ✓</div>
+  </div>
+
+  <div class="card">
+    <div class="card-body" style="display:flex;flex-direction:column;gap:.75rem">
+      <div class="section-title">重點摘要回顧</div>
+      <div class="alert alert-info"><div class="alert-icon">📋</div><div><strong>備物：</strong> 17 大類備品，Lidocaine / Heparin 須核對醫囑。</div></div>
+      <div class="alert alert-info"><div class="alert-icon">🖥</div><div><strong>術前 HIS：</strong> 同意書 ＋ 環境整備 ＋ HIS v4.0 核對（5 項），不需禁食。</div></div>
+      <div class="alert alert-info"><div class="alert-icon">✅</div><div><strong>Sign IN：</strong> 取消非病理組織勾選 → 掃描同意書 → 列印條碼 → 輸入醫師代號 → 掃描手圈 → Time Out → Sign IN → 疼痛評估。</div></div>
+      <div class="alert alert-danger"><div class="alert-icon">⚠️</div><div><strong>抽吸關鍵：</strong> 抽骨髓液時需立即安撫病人，告知「短暫酸麻感為正常」。</div></div>
+      <div class="alert alert-warning"><div class="alert-icon">🏷</div><div><strong>Sign OUT + 送檢：</strong> 掃描手圈 → 輸入件數 → 刷標籤 → Sign OUT 核對（4項）→ 疼痛評估 → 檢體確認 → 解剖病理組織送檢作業 → 儲存列印清單送檢。</div></div>
+      <div class="alert alert-warning"><div class="alert-icon">🧪</div><div><strong>標籤對應：</strong> 003→小紫頭 ｜ 004→檢查單 ｜ C77-033+大紫頭 ｜ L72-278→深綠頭 ｜ 福馬林瓶貼<strong>直式標籤</strong>＋<strong>瓶蓋易碎貼紙</strong>。</div></div>
+      <div class="alert alert-success"><div class="alert-icon">🩺</div><div><strong>術後護理：</strong> 加壓 30–60 分（凝血異常 ≥1h）→ 平躺 60 分 → 傷口 24–48h 不碰水。</div></div>
+      <button class="btn btn-primary btn-block" style="margin-top:.5rem" onclick="restartAll()">🔄 重新開始訓練</button>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<!-- FLASH POPUP -->
+<div class="popup-flash" id="popup-flash">
+  <span class="flash-icon" id="flash-icon">⚠️</span>
+  <div id="flash-msg"></div>
+  <button onclick="closeFlash()" style="margin-top:.6rem;background:rgba(255,255,255,.2);border:none;color:#fff;padding:.3rem .9rem;border-radius:6px;cursor:pointer;font-size:.82rem">知道了</button>
+</div>
+
+<!-- PAIN MODAL -->
+<div class="modal-overlay" id="pain-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <div>
+        <div class="modal-title">🩺 疼痛評估 — NRS 數字評量表</div>
+        <div style="font-size:.75rem;color:var(--gray600);margin-top:.2rem">請護理師依病人反應評估目前疼痛分數後確認</div>
+      </div>
+    </div>
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:.72rem;color:var(--gray400);margin-bottom:.25rem;padding:0 .15rem">
+        <span>無痛</span><span>中度</span><span>劇痛</span>
+      </div>
+      <div class="pain-scale">
+        <button class="pain-btn pain-0" onclick="selectPain(0)">0</button>
+        <button class="pain-btn pain-1" onclick="selectPain(1)">1</button>
+        <button class="pain-btn pain-2" onclick="selectPain(2)">2</button>
+        <button class="pain-btn pain-3" onclick="selectPain(3)">3</button>
+        <button class="pain-btn pain-4" onclick="selectPain(4)">4</button>
+        <button class="pain-btn pain-5" onclick="selectPain(5)">5</button>
+        <button class="pain-btn pain-6" onclick="selectPain(6)">6</button>
+        <button class="pain-btn pain-7" onclick="selectPain(7)">7</button>
+        <button class="pain-btn pain-8" onclick="selectPain(8)">8</button>
+        <button class="pain-btn pain-9" onclick="selectPain(9)">9</button>
+        <button class="pain-btn pain-10" onclick="selectPain(10)">10</button>
+      </div>
+      <div id="pain-selected-text" style="text-align:center;font-size:.88rem;color:var(--gray600);margin-bottom:1rem;min-height:1.4rem">請點選疼痛分數</div>
+      <button class="btn btn-primary btn-block" id="pain-confirm-btn" onclick="confirmPain()" disabled>確認疼痛評估記錄</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════ STATE ═══════════════
+let currentStage = 1;
+const stageUnlocked = [true,false,false,false,false,false];
+
+// S2
+let hisConfirmed = new Array(5).fill(false);
+
+// S3
+let s3NonPathoUnchecked = false;
+let s3LeftStep = 0; // 0=L1 pending, 1=L1done, 2=L2done, 3=L3done, 4=L4done
+let s3WristbandScanned = false;
+let s3TimeOutChecks = new Array(5).fill(false);
+let s3SignInDone = false;
+
+// S4
+let procStepsDone = 0;
+
+// S5 sign-out
+let soStepDone = 0; // 1..5
+let soChecks = new Array(4).fill(false);
+let soSignOutDone = false;
+let pathStepDone = 0;
+let s5PathologyDone = false;
+
+// S5 label
+let labelRotated = false;
+let labelStuck = false;
+let fragileStuck = false;
+
+// S5 quiz
+let quiz1Done = false;
+let quiz2Done = false;
+
+// Pain modal
+let painScore = null;
+let painCallback = null;
+
+// ═══════════════ INIT ═══════════════
+window.addEventListener('DOMContentLoaded',()=>{
+  updateS1Progress();
+});
+
+// ═══════════════ NAVIGATION ═══════════════
+function showStage(n){
+  document.querySelectorAll('.stage').forEach(s=>s.classList.remove('active'));
+  document.getElementById('stage-'+n).classList.add('active');
+  document.querySelectorAll('.step-item').forEach((el,i)=>{
+    el.classList.remove('active','done');
+    if(i+1<n) el.classList.add('done');
+    if(i+1===n) el.classList.add('active');
+  });
+  currentStage=n;
+  document.getElementById('progress-chip').textContent=
+    n<=5?`第 ${n} 關 / 共 5 關`:'訓練完成 🎓';
+}
+function jumpToStage(n){if(stageUnlocked[n-1])showStage(n);}
+function prevStage(from){showStage(from-1);}
+
+function nextStage(from){
+  if(from===1){
+    const items=document.querySelectorAll('#checklist-1 .check-item');
+    const checked=document.querySelectorAll('#checklist-1 .check-item.checked');
+    if(checked.length<items.length){document.getElementById('s1-err').style.display='flex';return;}
+  }
+  if(from===2){
+    const c2=document.querySelectorAll('#checklist-2 .check-item');
+    const c2c=document.querySelectorAll('#checklist-2 .check-item.checked');
+    if(c2c.length<c2.length||!hisConfirmed.every(v=>v)){document.getElementById('s2-err').style.display='flex';return;}
+  }
+  if(from===3){
+    if(!s3SignInDone){document.getElementById('s3-err').style.display='flex';return;}
+  }
+  if(from===4){
+    if(procStepsDone<4){document.getElementById('s4-err').style.display='flex';return;}
+  }
+  stageUnlocked[from]=true;
+  showStage(from+1);
+}
+
+// ═══════════════ S1 ═══════════════
+function toggleCheck(el,clId){
+  el.classList.toggle('checked');
+  if(clId==='checklist-1'){updateS1Progress();document.getElementById('s1-err').style.display='none';}
+  if(clId==='checklist-2'){document.getElementById('s2-err').style.display='none';}
+}
+function updateS1Progress(){
+  const items=document.querySelectorAll('#checklist-1 .check-item');
+  const checked=document.querySelectorAll('#checklist-1 .check-item.checked');
+  document.getElementById('s1-count').textContent=checked.length;
+  document.getElementById('s1-total').textContent=items.length;
+  document.getElementById('s1-progress').style.width=(items.length?Math.round(checked.length/items.length*100):0)+'%';
+}
+
+// ═══════════════ S2 HIS ═══════════════
+function confirmHIS(n){
+  hisConfirmed[n-1]=true;
+  const btn=document.getElementById('his-btn-'+n);
+  btn.classList.add('confirmed');btn.textContent='✔';btn.disabled=true;
+  const done=hisConfirmed.filter(v=>v).length;
+  document.getElementById('his-progress-text').textContent=done+' / 5';
+  document.getElementById('his-progress-bar').style.width=(done/5*100)+'%';
+  document.getElementById('s2-err').style.display='none';
+}
+
+// ═══════════════ S3 LEFT PANEL ═══════════════
+function clickNonPatho(){
+  if(s3LeftStep>0)return;
+  const box=document.getElementById('nonpatho-checkbox');
+  box.style.background='#fff';box.style.border='2px solid var(--gray400)';box.textContent='';
+  s3NonPathoUnchecked=true;
+  markLeftStep(1);
+}
+function markLeftStep(n){
+  s3LeftStep=n;
+  const row=document.getElementById('l'+n+'-row');
+  row.classList.remove('active-step');row.classList.add('done');
+  row.querySelector('.his-step-num').style.background='var(--teal)';
+  row.querySelector('.his-step-num').style.color='#fff';
+  const next=document.getElementById('l'+(n+1)+'-row');
+  if(next){
+    next.style.opacity='1';
+    next.classList.add('active-step');
+    const btn=next.querySelector('button');if(btn)btn.disabled=false;
+    const inp=next.querySelector('input');if(inp)inp.disabled=false;
+  }
+  if(n===4){
+    document.getElementById('left-done-badge').style.display='flex';
+    activateRightPanel();
+  }
+}
+function scanConsent(){
+  document.getElementById('l2-result').style.display='block';
+  document.getElementById('l2-btn').textContent='✔ 已掃描';
+  document.getElementById('l2-btn').disabled=true;
+  markLeftStep(2);
+}
+function printBarcode(){
+  const cnt=document.getElementById('specimen-count-input').value;
+  if(!cnt||parseInt(cnt)<1)return;
+  document.getElementById('l3-result').style.display='block';
+  document.getElementById('l3-btn').disabled=true;
+  document.getElementById('l3-btn').textContent='✔ 已列印';
+  markLeftStep(3);
+}
+function confirmDoctorCode(){
+  const code=document.getElementById('doctor-code-input').value.trim();
+  if(!code){showFlash('⚠️','請輸入執行醫師代號！',true);return;}
+  document.getElementById('l4-result').style.display='block';
+  document.getElementById('l4-btn').disabled=true;
+  document.getElementById('doctor-code-input').disabled=true;
+  markLeftStep(4);
+}
+
+// ═══════════════ S3 RIGHT PANEL ═══════════════
+function activateRightPanel(){
+  const r1=document.getElementById('r1-row');
+  r1.style.opacity='1';r1.classList.add('active-step');
+  document.getElementById('r1-btn').disabled=false;
+}
+function scanWristband(){
+  document.getElementById('r1-result').style.display='block';
+  document.getElementById('r1-btn').textContent='✔ 已掃描';
+  document.getElementById('r1-btn').disabled=true;
+  const r1=document.getElementById('r1-row');
+  r1.classList.remove('active-step');r1.classList.add('done');
+  s3WristbandScanned=true;
+  const r2=document.getElementById('r2-section');
+  r2.style.opacity='1';r2.style.pointerEvents='auto';
+}
+function toggleTimeout(el,idx){
+  if(!s3WristbandScanned)return;
+  el.classList.toggle('checked');
+  s3TimeOutChecks[idx]=el.classList.contains('checked');
+  const dot=el.querySelector('.timeout-dot');
+  if(el.classList.contains('checked')){
+    dot.style.background='var(--teal)';dot.style.borderColor='var(--teal)';dot.style.color='#fff';
+    dot.innerHTML='<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  }else{
+    dot.style.background='';dot.style.borderColor='';dot.style.color='';
+    dot.innerHTML='<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  }
+  if(s3TimeOutChecks.every(v=>v)){
+    document.getElementById('signin-btn').disabled=false;
+  }
+}
+function doSignIn(){
+  openPainModal(()=>{
+    s3SignInDone=true;
+    document.getElementById('signin-btn').disabled=true;
+    document.getElementById('signin-btn').textContent='✔ Sign IN 完成';
+    document.getElementById('signin-done-msg').style.display='flex';
+    document.getElementById('s3-err').style.display='none';
+  });
+}
+
+// ═══════════════ S4 PROCEDURE ═══════════════
+function execStep(n){
+  const step=document.getElementById('proc-'+n);
+  step.classList.remove('active');step.classList.add('done');
+  const btn=step.querySelector('button');btn.disabled=true;btn.textContent='完成 ✓';
+  if(n===4){
+    showFlash('🚨','【護理提醒】\n抽吸骨髓液時，請立即安撫病人：\n「這個步驟會有短暫酸麻感，很快就會過去，請盡量保持不動。」',true);
+  }
+  procStepsDone=n;
+  document.getElementById('s4-err').style.display='none';
+  if(n<4){
+    const next=document.getElementById('proc-'+(n+1));
+    next.classList.add('active');
+    next.querySelector('button').disabled=false;
+  } else {
+    document.getElementById('proc-done-msg').style.display='flex';
+  }
+}
+
+// ═══════════════ S5 SIGN OUT ═══════════════
+function soStep(n){
+  if(n===1){
+    const row=document.getElementById('so-1');
+    row.classList.remove('active');row.classList.add('done');
+    row.querySelector('button').disabled=true;row.querySelector('button').textContent='✔ 已掃描';
+    soStepDone=1;
+    const next=document.getElementById('so-2');
+    next.classList.add('active');
+    document.getElementById('so-count-input').disabled=false;
+    document.getElementById('so-enter-btn').disabled=false;
+  }
+  else if(n===2){
+    document.getElementById('so-2').classList.remove('active');document.getElementById('so-2').classList.add('done');
+    document.getElementById('so-enter-btn').disabled=true;document.getElementById('so-count-input').disabled=true;
+    soStepDone=2;
+    const next=document.getElementById('so-3');next.classList.add('active');
+    document.getElementById('so-3-btn').disabled=false;
+  }
+  else if(n===3){
+    document.getElementById('so-3').classList.remove('active');document.getElementById('so-3').classList.add('done');
+    document.getElementById('so-3-btn').disabled=true;document.getElementById('so-3-btn').textContent='✔ 已刷取';
+    soStepDone=3;
+    const next=document.getElementById('so-4');next.classList.add('active');
+    const soChecksEl=document.getElementById('so-checks');
+    soChecksEl.style.pointerEvents='auto';soChecksEl.style.opacity='1';
+  }
+  else if(n===5){
+    document.getElementById('so-5').classList.remove('active');document.getElementById('so-5').classList.add('done');
+    document.getElementById('so-5-btn').disabled=true;document.getElementById('so-5-btn').textContent='✔ 已確認';
+    document.getElementById('pathology-panel').style.display='block';
+    document.getElementById('pathology-panel').scrollIntoView({behavior:'smooth',block:'start'});
+  }
+}
+function toggleSoCheck(el,idx){
+  el.classList.toggle('checked');
+  soChecks[idx]=el.classList.contains('checked');
+  const dot=el.querySelector('.timeout-dot');
+  if(el.classList.contains('checked')){
+    dot.style.background='var(--teal)';dot.style.borderColor='var(--teal)';dot.style.color='#fff';
+    dot.innerHTML='<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  }else{
+    dot.style.background='';dot.style.borderColor='';dot.style.color='';
+    dot.innerHTML='<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  }
+  if(soChecks.every(v=>v))document.getElementById('signout-btn').disabled=false;
+}
+function doSignOut(){
+  openPainModal(()=>{
+    soSignOutDone=true;
+    document.getElementById('signout-btn').disabled=true;document.getElementById('signout-btn').textContent='✔ Sign OUT 完成';
+    document.getElementById('so-4').classList.remove('active');document.getElementById('so-4').classList.add('done');
+    soStepDone=4;
+    const next=document.getElementById('so-5');next.classList.add('active');
+    document.getElementById('so-5-btn').disabled=false;
+  });
+}
+
+// ═══════════════ PATHOLOGY STEPS ═══════════════
+function pathStep(n){
+  if(n===1){
+    document.getElementById('p1').classList.remove('active');document.getElementById('p1').classList.add('done');
+    document.getElementById('p1').querySelector('button').disabled=true;document.getElementById('p1').querySelector('button').textContent='✔ 已掃描';
+    document.getElementById('p2').classList.add('active');
+    document.getElementById('p2').querySelector('.proc-step-num').style.opacity='1';
+    document.getElementById('p2-btn').disabled=false;
+  }else if(n===2){
+    document.getElementById('p2').classList.remove('active');document.getElementById('p2').classList.add('done');
+    document.getElementById('p2-btn').disabled=true;document.getElementById('p2-btn').textContent='✔ 已掃描';
+    document.getElementById('p3').classList.add('active');
+    document.getElementById('p3').querySelector('.proc-step-num').style.opacity='1';
+    document.getElementById('p3-btn').disabled=false;
+  }else if(n===3){
+    document.getElementById('p3').classList.remove('active');document.getElementById('p3').classList.add('done');
+    document.getElementById('p3-btn').disabled=true;document.getElementById('p3-btn').textContent='✔ 已儲存列印';
+    s5PathologyDone=true;
+    document.getElementById('pathology-done-msg').style.display='flex';
+    showFlash('✅','送檢清單已列印！請連同檢體與委託單送至病理科。',false);
+  }
+}
+
+// ═══════════════ LABEL GAME ═══════════════
+function rotateLabel(){
+  labelRotated=true;
+  const lbl=document.getElementById('sticker-label');
+  lbl.classList.add('rotated');
+  document.getElementById('label-orientation').textContent='直式 ✓';
+  document.getElementById('label-orientation').style.color='var(--teal)';
+  document.getElementById('btn-stick').disabled=false;
+  document.getElementById('btn-rotate').disabled=true;
+}
+function stickLabel(){
+  if(!labelRotated)return;
+  labelStuck=true;
+  document.getElementById('sticker-label').style.opacity='0';
+  document.getElementById('sticker-label').style.transform+=' scale(0)';
+  document.getElementById('stuck-label').classList.add('visible');
+  document.getElementById('btn-stick').disabled=true;
+  document.getElementById('btn-fragile').disabled=false;
+}
+function addFragileSticker(){
+  fragileStuck=true;
+  document.getElementById('fragile-sticker').classList.add('visible');
+  document.getElementById('btn-fragile').disabled=true;
+  document.getElementById('btn-fragile').textContent='✔ 已貼';
+  document.getElementById('label-success-msg').style.display='flex';
+  showFlash('🏷️','標籤貼示完成！直式條碼 + 瓶蓋易碎貼紙，可正確掃描並識別易碎檢體。',false);
+}
+
+// ═══════════════ QUIZ ═══════════════
+function answerQuiz(qNum,el,correct){
+  const opts=el.parentElement.querySelectorAll('.quiz-option');
+  opts.forEach(o=>{o.style.pointerEvents='none';o.classList.add('selected')});
+  if(correct){
+    el.classList.add('correct');el.querySelector('.quiz-icon').textContent='✓';
+    document.getElementById('qfb-'+qNum).classList.add('visible');
+  }else{
+    el.classList.add('wrong');el.querySelector('.quiz-icon').textContent='✗';
+    opts.forEach(o=>{
+      if(o!==el&&o.getAttribute('onclick').includes('true')){
+        o.classList.add('correct');o.querySelector('.quiz-icon').textContent='✓';
+      }
+    });
+    document.getElementById('qfb-'+qNum+'w').classList.add('visible');
+  }
+  if(qNum===1)quiz1Done=true;
+  if(qNum===2)quiz2Done=true;
+}
+
+// ═══════════════ FINISH ═══════════════
+function finish(){
+  const errEl=document.getElementById('s5-err');
+  const msgEl=document.getElementById('s5-err-msg');
+  if(!s5PathologyDone){errEl.style.display='flex';msgEl.textContent='請先完成 Sign OUT 及解剖病理組織送檢作業！';return;}
+  if(!fragileStuck){errEl.style.display='flex';msgEl.textContent='請完成福馬林瓶標籤遊戲（直式標籤＋易碎貼紙）！';return;}
+  if(!quiz1Done||!quiz2Done){errEl.style.display='flex';msgEl.textContent='請回答所有衛教評量題目後方可完成訓練。';return;}
+  stageUnlocked[5]=true;showStage(6);
+}
+function restartAll(){location.reload();}
+
+// ═══════════════ PAIN MODAL ═══════════════
+function openPainModal(cb){
+  painCallback=cb;
+  painScore=null;
+  document.getElementById('pain-selected-text').textContent='請點選疼痛分數';
+  document.getElementById('pain-confirm-btn').disabled=true;
+  document.querySelectorAll('.pain-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('pain-modal').classList.add('open');
+}
+function selectPain(n){
+  painScore=n;
+  document.querySelectorAll('.pain-btn').forEach(b=>b.classList.remove('selected'));
+  document.querySelectorAll('.pain-btn')[n].classList.add('selected');
+  const labels=['無痛','極輕微','輕微','輕度','輕中度','中度','中重度','重度','很嚴重','極嚴重','最劇烈'];
+  document.getElementById('pain-selected-text').textContent=`選擇分數：${n} 分（${labels[n]}）`;
+  document.getElementById('pain-confirm-btn').disabled=false;
+}
+function confirmPain(){
+  document.getElementById('pain-modal').classList.remove('open');
+  showFlash('🩺',`疼痛評估記錄完成 — NRS：${painScore} 分。已帶入護理紀錄。`,false);
+  if(painCallback){painCallback();painCallback=null;}
+}
+
+// ═══════════════ FLASH ═══════════════
+let flashTimer;
+function showFlash(icon,msg,danger){
+  const el=document.getElementById('popup-flash');
+  document.getElementById('flash-icon').textContent=icon;
+  document.getElementById('flash-msg').textContent=msg;
+  el.style.background=danger?'var(--red)':'var(--teal)';
+  el.classList.add('show');
+  clearTimeout(flashTimer);
+  flashTimer=setTimeout(()=>el.classList.remove('show'),7000);
+}
+function closeFlash(){document.getElementById('popup-flash').classList.remove('show');}
+</script>
+</body>
+</html>
